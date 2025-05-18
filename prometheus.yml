@@ -1,0 +1,19 @@
+# Prometheusの全体設定
+global:
+  scrape_interval: 15s # メトリクスを収集する間隔 (デフォルトは1分ですが、デモ用に短く)
+  evaluation_interval: 15s # アラートルールなどを評価する間隔
+
+# Prometheusがメトリクスを収集するターゲットの定義
+scrape_configs:
+  # Prometheus自身のメトリクスを収集するジョブ
+  - job_name: 'prometheus'
+    # Prometheusはデフォルトで /metrics エンドポイントを提供
+    static_configs:
+      # Docker Composeのネットワーク上ではサービス名でアクセス可能
+      - targets: ['prometheus:9090']
+
+  # Node Exporterのメトリクスを収集するジョブ
+  - job_name: 'node_exporter'
+    static_configs:
+      # Docker Composeのネットワーク上ではサービス名でアクセス可能
+      - targets: ['nodeexporter:9100']
