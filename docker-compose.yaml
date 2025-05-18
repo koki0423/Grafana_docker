@@ -1,12 +1,59 @@
-version: "3.8"
+version: '3.8' # Docker Compose ファイルのバージョンを指定
+
+# 各サービス（コンテナ）を定義
 services:
-  grafana:
-    image: grafana/grafana-enterprise
-    container_name: grafana
-    restart: unless-stopped
+
+  # Prometheus サービス
+  prometheus:
+    image: prom/prometheus:latest # Prometheus イメージを使用
+    container_name: prometheus # コンテナ名を指定
+    restart: unless-stopped # コンテナの再起動ポリシー
     ports:
-      - '3011:3000'
+      - '9090:9090' # ホストの9090ポートをコンテナの9090ポートにマッピング (Prometheus UI)
     volumes:
-      - 'grafana_storage:/var/lib/grafana'
+      # ホストの prometheus.yml をコンテナの設定ファイルとしてマウント
+      - './prometheus.yml:/etc/prometheus/prometheus.yml'
+      # Prometheusのデータを永続化するための名前付きボリューム
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring_net # 後述するカスタムネットワークに参加
+
+  # Grafana サービス
+  grafana:
+    image: grafana/grafana:latest # Grafana イメージを使用 (enterprise版でなければこちらが一般的)
+    container_name: grafana # コンテナ名を指定
+    restart: unless-stopped # コンテナの再起動ポリシー
+    ports:
+      - '3011:3000' # ホストの3011ポートをコンテナの3000ポートにマッピング (Grafana UI)
+    volumes:
+      # Grafanaの設定やダッシュボードを永続化するための名前付きボリューム
+      - grafana_data:/var/lib/grafana
+    networks:
+      - monitoring_net # カスタムネットワークに参加
+
+  # Node Exporter サービス (ホストOSのメトリクスを収集)
+  nodeexporter:
+    image: prom/node-exporter:latest # Node Exporter イメージを使用
+    container_name: nodeexporter # コンテナ名を指定
+    restart: unless-stopped # コンテナの再起動ポリシー
+    ports:
+      - '9100:9100' # ホストの9100ポートをコンテナの9100ポートにマッピング (任意ですが、デバッグに便利)
+    volumes:
+      # ホストのルートファイルシステムを読み取り専用でマウント (Node Exporterが必要とする権限)
+      - '/:/host:ro,rslave'
+    command: # マウントしたルートファイルシステムをNode Exporterに認識させるコマンド
+      - '--path.rootfs=/host'
+    networks:
+      - monitoring_net # カスタムネットワークに参加
+    # Node Exporterはホストの情報を収集するため、ホストのPID名前空間を使用
+    pid: host
+
+# データを永続化するための名前付きボリュームを定義
 volumes:
-  grafana_storage: {}
+  prometheus_data: {}
+  grafana_data: {}
+
+# サービス間で通信するためのカスタムネットワークを定義
+networks:
+  monitoring_net:
+    driver: bridge # 標準のブリッジネットワークを使用
