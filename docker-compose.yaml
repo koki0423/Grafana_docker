@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
 
   # Prometheus サービス
@@ -22,7 +20,7 @@ services:
     container_name: grafana
     restart: unless-stopped
     ports:
-      - '3011:3000' # ホストの3011ポートをコンテナの3000ポートにマッピング
+      - '3011:3000' # ホスト3011->コンテナ3000
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
