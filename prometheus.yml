@@ -6,14 +6,65 @@ scrape_configs:
   # Prometheus自身のメトリクスを収集するジョブ
   - job_name: 'prometheus'
     static_configs:
-      - targets: ['prometheus:9090']
+      - targets: ['127.0.0.1:9090']
 
-  # Node Exporterのメトリクスを収集するジョブ
-  - job_name: 'node_exporter'
+  # 各ワーカーのNode Exporterメトリクスを収集するジョブ
+  - job_name: "node"
     static_configs:
-      - targets: ['nodeexporter:9100']
+      - targets: ["192.168.64.154:9100"]
+        labels: { my_hostname: "Worker1" }
+      - targets: ["10.0.20.2:9100"]
+        labels: { my_hostname: "Worker2" }
+      - targets: ["10.0.30.2:9100"]
+        labels: { my_hostname: "Worker3" }
+      - targets: ["10.0.40.2:9100"]
+        labels: { my_hostname: "Worker4" }
+      - targets: ["tb3-37.local:9100"]
+        labels: { my_hostname: "TB3-37" }
+    relabel_configs:
+      - source_labels: [my_hostname]
+        target_label: instance
+
 
   # Process Exporterのメトリクスを収集するジョブ
   - job_name: 'process-exporter'
     static_configs:
       - targets: ['processexporter:9256']
+
+  - job_name: "gpu"
+    static_configs:
+      - targets: ["192.168.0.218:9400"]
+        labels:
+          my_hostname: "Worker1"
+      - targets: ["10.0.20.2:9400"]
+        labels:
+          my_hostname: "Worker2"
+      - targets: ["10.0.30.2:9400"]
+        labels:
+          my_hostname: "Worker3"
+      - targets: ["10.0.40.2:9400"]
+        labels:
+          my_hostname: "Worker4"
+
+  - job_name: "blackbox_icmp"
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      # - targets: ["192.168.1.32"] # 例としてルーターのIPアドレス
+      #   labels: { my_hostname: "Router" }
+      - targets: ["192.168.64.154"]
+        labels: { my_hostname: "Worker1" }
+      - targets: ["10.0.20.2"]
+        labels: { my_hostname: "Worker2" }
+      - targets: ["10.0.30.2"]
+        labels: { my_hostname: "Worker3" }
+      - targets: ["10.0.40.2"]
+        labels: { my_hostname: "Worker4" }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115

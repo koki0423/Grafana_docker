@@ -4,80 +4,96 @@ services:
   prometheus:
     image: prom/prometheus:latest 
     container_name: prometheus 
-    restart: unless-stopped
-    ports:
-      - '9090:9090'
+    # restart: unless-stopped
     volumes:
       # ホストの prometheus.yml をコンテナの設定ファイルとしてマウント
       - './prometheus.yml:/etc/prometheus/prometheus.yml'
       - prometheus_data:/prometheus
-    networks:
-      - monitoring_net
+    network_mode: host
+    restart: always
 
   # Grafana サービス
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    restart: unless-stopped
-    ports:
-      - '3011:3000' # ホスト3011->コンテナ3000
+    # restart: unless-stopped
     volumes:
       - grafana_data:/var/lib/grafana
-    networks:
-      - monitoring_net
+    network_mode: host
+    restart: always
 
   # Node Exporter サービス
   nodeexporter:
     image: prom/node-exporter:latest
     container_name: nodeexporter
-    restart: unless-stopped
-    ports:
-      - '9100:9100'
+    # restart: unless-stopped
     volumes:
       - '/:/host:ro,rslave'
     command:
       - '--path.rootfs=/host'
-    networks:
-      - monitoring_net
+    network_mode: host
     pid: host
+    restart: always
 
   # Process Exporter サービス
   processexporter:
     image: ncabatoff/process-exporter:latest
     container_name: processexporter
-    restart: unless-stopped
+    # restart: unless-stopped
     pid: host
-    ports:
-      - "9256:9256"
     volumes:
       - "/proc:/host/proc:ro"
       - "./process-exporter.yml:/config.yml:ro"
     command:
       - "--procfs=/host/proc"
       - "--config.path=/config.yml"
-    networks:
-      - monitoring_net
-  
+    network_mode: host
+    restart: always
+
   # Portainer サービス
   portainer:
     image: portainer/portainer-ce:latest
     container_name: portainer
-    restart: unless-stopped
-    ports:
-      - "9443:9443"         # Web UI (https://ホスト:9443)
+     #restart: unless-stopped
+    #ports:
+      #- "9443:9443"         # Web UI (https://ホスト:9443)
       # 必要ならエージェント用
       # - "8000:8000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
-    networks:
-      - monitoring_net
+    #networks:
+    #  - monitoring_net
+    network_mode: host
+    #restart: always
+
+  # NVIDIA
+  dcgm-exporter:
+    image: nvidia/dcgm-exporter:latest
+    container_name: dcgm-exporter
+    restart: unless-stopped
+    deploy:
+          resources:
+            reservations:
+              devices:
+                - driver: nvidia
+                  count: all
+                  capabilities: [gpu]
+    ports:
+      - "9400:9400"
+
+  blackbox_exporter:
+    # image: quay.io/prometheus/blackbox-exporter:latest
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox_exporter
+    restart: unless-stopped
+    volumes:
+      - ./blackbox.yml:/etc/blackbox/blackbox.yml
+    ports:
+      - 9115:9115
+    command: --config.file /etc/blackbox/blackbox.yml
 
 volumes:
   prometheus_data: {}
   grafana_data: {}
   portainer_data: {}
-
-networks:
-  monitoring_net:
-    driver: bridge
